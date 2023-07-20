@@ -130,15 +130,8 @@ export class CategoryService implements OnModuleInit {
   public async updateCategory(
     payload: UpdateCategoryRequestDto,
   ): Promise<CategoryOperationResponse> {
-    const {
-      id,
-      name,
-      description,
-      productsIds,
-      parentId,
-      subcategoriesIds,
-      images,
-    } = payload;
+    const { id, name, description, parentId, subcategoriesIds, images } =
+      payload;
 
     const category = await this.repository.findOneBy({ id });
     if (!category)
@@ -168,8 +161,6 @@ export class CategoryService implements OnModuleInit {
     } else {
       category.subcategories = null;
     }
-
-    category.products = productsIds || category.products;
 
     category.name = name || category.name;
     category.description = description || category.description;

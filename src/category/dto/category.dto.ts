@@ -54,11 +54,6 @@ export class UpdateCategoryRequestDto implements UpdateCategoryRequest {
   public readonly description?: string;
 
   @IsOptional()
-  @IsArray()
-  @IsGreaterThanZeroNumberArray()
-  public readonly productsIds: number[];
-
-  @IsOptional()
   @IsNumber({ allowInfinity: false, allowNaN: false })
   public readonly parentId?: number;
 
