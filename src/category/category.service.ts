@@ -52,12 +52,16 @@ export class CategoryService implements OnModuleInit {
       };
     }
 
+    const categoriesIds = await this.findCategoryIdsAndSubcategoryIds(
+      category.id,
+    );
+
     const {
       status,
       data: products,
       error,
     } = await firstValueFrom(
-      this.productSvc.findAll({ category: category.id }),
+      this.productSvc.findAll({ categories: categoriesIds }),
     );
     if (status !== HttpStatus.OK) {
       return {
@@ -209,5 +213,28 @@ export class CategoryService implements OnModuleInit {
       .createQueryBuilder('category')
       .where('category.id IN (:...ids)', { ids })
       .getMany();
+  }
+
+  async findCategoryIdsAndSubcategoryIds(
+    categoryId: number,
+  ): Promise<number[]> {
+    const category = await this.repository.findOne({
+      where: { id: categoryId },
+      select: { id: true },
+      relations: { subcategories: true },
+    });
+
+    if (!category) {
+      return [];
+    }
+
+    const subcategoryIds = [];
+    for (const subcategory of category.subcategories) {
+      const subcategoryIdsRecursive =
+        await this.findCategoryIdsAndSubcategoryIds(subcategory.id);
+      subcategoryIds.push(...subcategoryIdsRecursive);
+    }
+
+    return [category.id, ...subcategoryIds];
   }
 }
