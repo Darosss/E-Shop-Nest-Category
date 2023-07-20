@@ -51,12 +51,21 @@ export class CategoryService implements OnModuleInit {
         status: HttpStatus.NOT_FOUND,
       };
     }
-    const products =
-      category.products?.length > 0
-        ? await firstValueFrom(
-            this.productSvc.getProductsByIds({ ids: category.products }),
-          )
-        : { data: [] };
+
+    const {
+      status,
+      data: products,
+      error,
+    } = await firstValueFrom(
+      this.productSvc.findAll({ category: category.id }),
+    );
+    if (status !== HttpStatus.OK) {
+      return {
+        data: null,
+        error: error,
+        status: status,
+      };
+    }
 
     return {
       data: {
@@ -66,7 +75,7 @@ export class CategoryService implements OnModuleInit {
         parent: category.parent,
         subcategories: category.subcategories,
         images: category.images,
-        products: products.data,
+        products: products,
       },
       error: null,
       status: HttpStatus.OK,
