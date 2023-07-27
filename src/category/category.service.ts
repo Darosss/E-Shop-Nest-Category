@@ -1,6 +1,6 @@
 import { HttpStatus, Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Category } from './entities/category.entity';
 import {
   CreateCategoryRequestDto,
@@ -87,26 +87,51 @@ export class CategoryService implements OnModuleInit {
   }
 
   public async findAll(): Promise<FindAllCategoriesResponse> {
-    const category = await this.repository.find({
+    const categories = await this.repository.find({
+      where: {
+        parentId: IsNull(),
+      },
       relations: {
         subcategories: true,
         parent: true,
       },
     });
 
-    if (!category) {
+    if (!categories) {
       return {
         data: null,
-        error: ['Category not found'],
+        error: ['Categories not found'],
         status: HttpStatus.NOT_FOUND,
       };
     }
 
+    const modifiedCategoriesList = await this.getThirdSubCategoriesDepth(
+      categories,
+    );
+
     return {
-      data: category,
+      data: modifiedCategoriesList,
       error: null,
       status: HttpStatus.OK,
     };
+  }
+
+  private async getThirdSubCategoriesDepth(categories: Category[]) {
+    const modifiedCategoriesList = [];
+    for await (const cat of categories) {
+      const subcategoriesList: Category[] = [];
+      for await (const subCat of cat.subcategories) {
+        const subcategories = await this.repository.findOne({
+          where: { id: subCat.id },
+          relations: { subcategories: true },
+        });
+        subcategoriesList.push(subcategories);
+      }
+
+      modifiedCategoriesList.push({ ...cat, subcategories: subcategoriesList });
+    }
+
+    return modifiedCategoriesList;
   }
 
   public async createCategory(
