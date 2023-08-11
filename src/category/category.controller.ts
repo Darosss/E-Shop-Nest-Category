@@ -12,6 +12,9 @@ import {
 } from './pb/category.pb';
 import {
   CreateCategoryRequestDto,
+  FindOneByCategorySlugRequestDto,
+  FindOneByHeadSlugRequestDto,
+  FindOneBySubHeadSlugRequestDto,
   FindOneRequestDto,
   UpdateCategoryRequestDto,
 } from './dto/category.dto';
@@ -41,6 +44,26 @@ export class CategoryController {
     payload: FindOneRequestDto,
   ): Promise<FindOneCategoryResponse> {
     return this.service.findOne(payload);
+  }
+
+  @GrpcMethod(CATEGORY_SERVICE_NAME, 'FindOneByHeadSlug')
+  private findOneByHeadSlug(
+    payload: FindOneByHeadSlugRequestDto,
+  ): Promise<FindOneCategoryResponse> {
+    return this.service.findOneByHeadSlug(payload);
+  }
+  @GrpcMethod(CATEGORY_SERVICE_NAME, 'FindOneBySubHeadSlug')
+  private findOneBySubHeadSlug(
+    payload: FindOneBySubHeadSlugRequestDto,
+  ): Promise<FindOneCategoryResponse> {
+    return this.service.findOneBySubHeadSlug(payload);
+  }
+
+  @GrpcMethod(CATEGORY_SERVICE_NAME, 'FindOneByCategorySlug')
+  private findOneByCategorySlug(
+    payload: FindOneByCategorySlugRequestDto,
+  ): Promise<FindOneCategoryResponse> {
+    return this.service.findOneByCategorySlug(payload);
   }
 
   @GrpcMethod(CATEGORY_SERVICE_NAME, 'FindAll')
