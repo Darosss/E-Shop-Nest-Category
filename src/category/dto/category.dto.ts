@@ -8,15 +8,41 @@ import {
 } from 'class-validator';
 import {
   CreateCategoryRequest,
+  FindOneByCategorySlugRequest,
+  FindOneByHeadSlugRequest,
+  FindOneBySubHeadSlugRequest,
   FindOneCategoryRequest,
   UpdateCategoryRequest,
 } from '../pb/category.pb';
 import { IsGreaterThanZeroNumberArray } from './validators.helper';
 
 export class FindOneRequestDto implements FindOneCategoryRequest {
+  @IsOptional()
   @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(0)
-  public readonly id: number;
+  public readonly id?: number;
+}
+
+export class FindOneByHeadSlugRequestDto implements FindOneByHeadSlugRequest {
+  @IsOptional()
+  @IsString()
+  public readonly headSlug?: string;
+}
+export class FindOneBySubHeadSlugRequestDto
+  extends FindOneByHeadSlugRequestDto
+  implements FindOneBySubHeadSlugRequest
+{
+  @IsOptional()
+  @IsString()
+  public readonly subHeadSlug?: string;
+}
+export class FindOneByCategorySlugRequestDto
+  extends FindOneBySubHeadSlugRequestDto
+  implements FindOneByCategorySlugRequest
+{
+  @IsOptional()
+  @IsString()
+  public readonly categorySlug?: string;
 }
 
 export class CreateCategoryRequestDto implements CreateCategoryRequest {
