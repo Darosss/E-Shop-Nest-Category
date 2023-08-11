@@ -4,6 +4,9 @@ import { IsNull, Repository } from 'typeorm';
 import { Category } from './entities/category.entity';
 import {
   CreateCategoryRequestDto,
+  FindOneByCategorySlugRequestDto,
+  FindOneByHeadSlugRequestDto,
+  FindOneBySubHeadSlugRequestDto,
   FindOneRequestDto,
   UpdateCategoryRequestDto,
 } from './dto/category.dto';
@@ -35,16 +38,15 @@ export class CategoryService implements OnModuleInit {
   public async findOne({
     id,
   }: FindOneRequestDto): Promise<FindOneCategoryResponse> {
-    const category = await this.repository.findOne({
+    const foundCategory = await this.repository.findOne({
       where: { id },
-
       relations: {
         subcategories: true,
         parent: true,
       },
     });
 
-    if (!category) {
+    if (!foundCategory) {
       return {
         data: null,
         error: ['Category not found'],
@@ -52,22 +54,93 @@ export class CategoryService implements OnModuleInit {
       };
     }
 
-    const categoriesIds = await this.findCategoryIdsAndSubcategoryIds(
-      category.id,
-    );
+    return await this.findCategoryAndProducts(foundCategory);
+  }
 
-    const {
-      status,
-      data: products,
-      error,
-    } = await firstValueFrom(
-      this.productSvc.findAll({ categories: categoriesIds }),
-    );
-    if (status !== HttpStatus.OK) {
+  public async findOneByHeadSlug({
+    headSlug,
+  }: FindOneByHeadSlugRequestDto): Promise<FindOneCategoryResponse> {
+    const foundCategory = await this.repository.findOne({
+      where: { name: headSlug },
+      relations: {
+        subcategories: true,
+        parent: true,
+      },
+    });
+
+    if (!foundCategory) {
       return {
         data: null,
-        error: error,
-        status: status,
+        error: ['Category not found'],
+        status: HttpStatus.NOT_FOUND,
+      };
+    }
+
+    return await this.findCategoryAndProducts(foundCategory);
+  }
+
+  public async findOneBySubHeadSlug({
+    headSlug,
+    subHeadSlug,
+  }: FindOneBySubHeadSlugRequestDto): Promise<FindOneCategoryResponse> {
+    const foundCategory = await this.repository
+      .createQueryBuilder('category')
+      .leftJoinAndSelect('category.parent', 'parent')
+      .leftJoinAndSelect('category.subcategories', 'subcategories')
+      .where('parent.name = :headSlug', { headSlug })
+      .andWhere('category.name = :subHeadSlug', { subHeadSlug })
+      .getOne();
+
+    if (!foundCategory) {
+      return {
+        data: null,
+        error: ['Category not found'],
+        status: HttpStatus.NOT_FOUND,
+      };
+    }
+
+    return await this.findCategoryAndProducts(foundCategory);
+  }
+
+  public async findOneByCategorySlug({
+    headSlug,
+    subHeadSlug,
+    categorySlug,
+  }: FindOneByCategorySlugRequestDto): Promise<FindOneCategoryResponse> {
+    const foundCategory = await this.repository
+      .createQueryBuilder('category')
+      .leftJoinAndSelect('category.parent', 'subHead')
+      .leftJoinAndSelect('subHead.parent', 'head')
+      .where('category.name = :categorySlug', { categorySlug })
+      .andWhere('subHead.name = :subHeadSlug', { subHeadSlug })
+      .andWhere('head.name = :headSlug', { headSlug })
+      .getOne();
+
+    if (!foundCategory) {
+      return {
+        data: null,
+        error: ['Category not found'],
+        status: HttpStatus.NOT_FOUND,
+      };
+    }
+
+    return await this.findCategoryAndProducts(foundCategory);
+  }
+
+  private async findCategoryAndProducts(
+    category: Category,
+  ): Promise<FindOneCategoryResponse> {
+    const {
+      data: products,
+      error: errorProducts,
+      status: statusProducts,
+    } = await this.findProductsByCategoryId(category.id);
+
+    if (errorProducts) {
+      return {
+        data: null,
+        error: errorProducts,
+        status: statusProducts,
       };
     }
 
@@ -84,6 +157,33 @@ export class CategoryService implements OnModuleInit {
       error: null,
       status: HttpStatus.OK,
     };
+  }
+
+  private async findProductsByCategoryId(categoryId: number) {
+    const categoriesIds = await this.findCategoryIdsAndSubcategoryIds(
+      categoryId,
+    );
+
+    const {
+      status: productsStatus,
+      data: products,
+      error,
+    } = await firstValueFrom(
+      this.productSvc.findAll({ categories: categoriesIds }),
+    );
+    if (productsStatus !== HttpStatus.OK) {
+      return {
+        data: null,
+        error: error,
+        status: productsStatus,
+      };
+    } else {
+      return {
+        data: products,
+        error: null,
+        status: productsStatus,
+      };
+    }
   }
 
   public async findAll(): Promise<FindAllCategoriesResponse> {
