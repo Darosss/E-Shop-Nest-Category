@@ -14,10 +14,16 @@ import {
   CategoryOperationResponse,
   FindAllCategoriesResponse,
   FindOneCategoryResponse,
+  FindOneRelatedCategories,
   GetCategoriesByIdsResponse,
 } from './pb/category.pb';
 import { ClientGrpc } from '@nestjs/microservices';
-import { PRODUCT_SERVICE_NAME, ProductServiceClient } from './pb/product.pb';
+import {
+  FindProductsCountByCategoryIdRequest,
+  FindProductsCountByCategoryIdResponse,
+  PRODUCT_SERVICE_NAME,
+  ProductServiceClient,
+} from './pb/product.pb';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable()
@@ -130,40 +136,96 @@ export class CategoryService implements OnModuleInit {
   private async findCategoryAndProducts(
     category: Category,
   ): Promise<FindOneCategoryResponse> {
+    const categoriesIds = await this.findCategoryIdsAndSubcategoryIds(
+      category.id,
+    );
+
     const {
       data: products,
       error: errorProducts,
       status: statusProducts,
-    } = await this.findProductsByCategoryId(category.id);
+    } = await this.findProductsByCategoryId(categoriesIds);
 
-    if (errorProducts) {
+    const {
+      data: dataCount,
+      error: errorCount,
+      status: statusCount,
+    } = await this.findProductsCountByCategoryId({
+      categoriesIds,
+    });
+
+    if (errorProducts || errorCount) {
       return {
         data: null,
-        error: errorProducts,
-        status: statusProducts,
+        error: errorProducts || errorCount,
+        status: statusProducts || statusCount,
       };
     }
 
+    const subcategoriesWithProductCount: FindOneRelatedCategories[] = [];
+    if (category.subcategories) {
+      subcategoriesWithProductCount.push(
+        ...(await this.getCountProductsFromCategories(category.subcategories)),
+      );
+    }
     return {
       data: {
         id: category.id,
         name: category.name,
         description: category.description,
         parent: category.parent,
-        subcategories: category.subcategories,
+        subcategories: subcategoriesWithProductCount,
         images: category.images,
         products: products,
+        productsCount: dataCount.productsCount,
       },
       error: null,
       status: HttpStatus.OK,
     };
   }
 
-  private async findProductsByCategoryId(categoryId: number) {
-    const categoriesIds = await this.findCategoryIdsAndSubcategoryIds(
-      categoryId,
+  private async getCountProductsFromCategories(
+    categories: Category[],
+  ): Promise<FindOneRelatedCategories[]> {
+    const categoriesWithProductCounts: FindOneRelatedCategories[] = [];
+    for await (const thirdDepthCat of categories) {
+      const {
+        data: { productsCount },
+      } = await firstValueFrom(
+        this.productSvc.findProductsCountByCategoryId({
+          categoriesIds: [thirdDepthCat.id],
+        }),
+      );
+
+      categoriesWithProductCounts.push({ ...thirdDepthCat, productsCount });
+    }
+
+    return categoriesWithProductCounts;
+  }
+
+  private async findProductsCountByCategoryId({
+    categoriesIds,
+  }: FindProductsCountByCategoryIdRequest): Promise<FindProductsCountByCategoryIdResponse> {
+    const { status, data, error } = await firstValueFrom(
+      this.productSvc.findProductsCountByCategoryId({ categoriesIds }),
     );
 
+    if (status !== HttpStatus.OK) {
+      return {
+        data: null,
+        error: error,
+        status: status,
+      };
+    } else {
+      return {
+        data: data,
+        error: null,
+        status: status,
+      };
+    }
+  }
+
+  private async findProductsByCategoryId(categoriesIds: number[]) {
     const {
       status: productsStatus,
       data: products,
