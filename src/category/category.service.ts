@@ -22,6 +22,7 @@ import {
   FindProductsCountByCategoryIdRequest,
   FindProductsCountByCategoryIdResponse,
   PRODUCT_SERVICE_NAME,
+  ProductQueries,
   ProductServiceClient,
 } from './pb/product.pb';
 import { firstValueFrom } from 'rxjs';
@@ -65,6 +66,7 @@ export class CategoryService implements OnModuleInit {
 
   public async findOneByHeadSlug({
     headSlug,
+    productQueries,
   }: FindOneByHeadSlugRequestDto): Promise<FindOneCategoryResponse> {
     const foundCategory = await this.repository.findOne({
       where: { name: headSlug },
@@ -82,7 +84,7 @@ export class CategoryService implements OnModuleInit {
       };
     }
 
-    return await this.findCategoryAndProducts(foundCategory);
+    return await this.findCategoryAndProducts(foundCategory, productQueries);
   }
 
   public async findOneBySubHeadSlug({
@@ -135,6 +137,7 @@ export class CategoryService implements OnModuleInit {
 
   private async findCategoryAndProducts(
     category: Category,
+    queries?: ProductQueries,
   ): Promise<FindOneCategoryResponse> {
     const categoriesIds = await this.findCategoryIdsAndSubcategoryIds(
       category.id,
@@ -144,7 +147,7 @@ export class CategoryService implements OnModuleInit {
       data: products,
       error: errorProducts,
       status: statusProducts,
-    } = await this.findProductsByCategoryId(categoriesIds);
+    } = await this.findProductsByCategoryId(categoriesIds, queries);
 
     const {
       data: dataCount,
@@ -152,6 +155,7 @@ export class CategoryService implements OnModuleInit {
       status: statusCount,
     } = await this.findProductsCountByCategoryId({
       categoriesIds,
+      queries,
     });
 
     if (errorProducts || errorCount) {
@@ -205,9 +209,10 @@ export class CategoryService implements OnModuleInit {
 
   private async findProductsCountByCategoryId({
     categoriesIds,
+    queries,
   }: FindProductsCountByCategoryIdRequest): Promise<FindProductsCountByCategoryIdResponse> {
     const { status, data, error } = await firstValueFrom(
-      this.productSvc.findProductsCountByCategoryId({ categoriesIds }),
+      this.productSvc.findProductsCountByCategoryId({ categoriesIds, queries }),
     );
 
     if (status !== HttpStatus.OK) {
@@ -225,13 +230,16 @@ export class CategoryService implements OnModuleInit {
     }
   }
 
-  private async findProductsByCategoryId(categoriesIds: number[]) {
+  private async findProductsByCategoryId(
+    categoriesIds: number[],
+    queries?: ProductQueries,
+  ) {
     const {
       status: productsStatus,
       data: products,
       error,
     } = await firstValueFrom(
-      this.productSvc.findAll({ categories: categoriesIds }),
+      this.productSvc.findAll({ categories: categoriesIds, queries }),
     );
     if (productsStatus !== HttpStatus.OK) {
       return {
