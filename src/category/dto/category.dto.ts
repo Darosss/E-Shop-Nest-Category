@@ -15,6 +15,7 @@ import {
   UpdateCategoryRequest,
 } from '../pb/category.pb';
 import { IsGreaterThanZeroNumberArray } from './validators.helper';
+import { ProductQueries } from '../pb/product.pb';
 
 export class FindOneRequestDto implements FindOneCategoryRequest {
   @IsOptional()
@@ -27,6 +28,9 @@ export class FindOneByHeadSlugRequestDto implements FindOneByHeadSlugRequest {
   @IsOptional()
   @IsString()
   public readonly headSlug?: string;
+
+  @IsOptional()
+  productQueries?: ProductQueries;
 }
 export class FindOneBySubHeadSlugRequestDto
   extends FindOneByHeadSlugRequestDto
