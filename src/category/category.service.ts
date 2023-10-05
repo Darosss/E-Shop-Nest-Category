@@ -22,10 +22,10 @@ import {
   FindProductsCountByCategoryIdRequest,
   FindProductsCountByCategoryIdResponse,
   PRODUCT_SERVICE_NAME,
-  ProductQueries,
   ProductServiceClient,
 } from './pb/product.pb';
 import { firstValueFrom } from 'rxjs';
+import { Queries } from './pb/pagination.pb';
 
 @Injectable()
 export class CategoryService implements OnModuleInit {
@@ -137,7 +137,7 @@ export class CategoryService implements OnModuleInit {
 
   private async findCategoryAndProducts(
     category: Category,
-    queries?: ProductQueries,
+    queries?: Queries,
   ): Promise<FindOneCategoryResponse> {
     const categoriesIds = await this.findCategoryIdsAndSubcategoryIds(
       category.id,
@@ -232,7 +232,7 @@ export class CategoryService implements OnModuleInit {
 
   private async findProductsByCategoryId(
     categoriesIds: number[],
-    queries?: ProductQueries,
+    queries?: Queries,
   ) {
     const {
       status: productsStatus,
